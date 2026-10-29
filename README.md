@@ -16,9 +16,7 @@ Written in **T-SQL (SQL Server)** using **CTEs and window functions** on a data 
 - [Skills Demonstrated](#skills-demonstrated)
 - [Part 1: Change Over Year (YoY) Analysis](#part-1-change-over-year-yoy-analysis)
 - [Part 2: Performance Analysis](#part-2-performance-analysis)
-- [Sample Queries](#sample-queries)
 - [Key Insights](#key-insights)
-- [Repository Structure](#repository-structure)
 - [How to Run](#how-to-run)
 - [About Me](#about-me)
 
@@ -38,12 +36,19 @@ Written in **T-SQL (SQL Server)** using **CTEs and window functions** on a data 
 
 ## Dataset & Schema
 
-Star-schema style data warehouse (gold layer):
+Star-schema style data warehouse (gold layer) loaded from CSV files:
 
-| Table | Description | Columns used |
-|---|---|---|
-| `gold.fact_sales` | Sales transactions | `order_date`, `sales_amount`, `customer_key`, `product_key` |
-| `gold.dim_products` | Product details | `product_key`, `product_id`, `product_name`, `category_id` |
+| Table / CSV | Type | Description | Key columns |
+|---|---|---|---|
+| `gold.fact_sales` | Fact | Sales transactions, one row per order line | `order_date`, `sales_amount`, `customer_key`, `product_key` |
+| `gold.dim_products` | Dimension | Product details and categories | `product_key`, `product_id`, `product_name`, `category_id` |
+| `gold.dim_customers` | Dimension | Customer details | `customer_key`, [add other columns, e.g. `customer_name`, `country`, `gender`, `birthdate`] |
+
+**Relationships**
+- `gold.fact_sales.product_key` → `gold.dim_products.product_key`
+- `gold.fact_sales.customer_key` → `gold.dim_customers.customer_key`
+
+The customer analyses (unique customers per year and Diamond / Gold / Silver segmentation) use `customer_key` from the sales table, which links to the customers table, so they can be extended with customer attributes such as country or age group.
 
 Rows with a NULL `order_date` are excluded from every analysis.
 
@@ -84,84 +89,6 @@ Rows with a NULL `order_date` are excluded from every analysis.
 
 ---
 
-## Sample Queries
-
-### Previous year vs current year sales (YoY difference)
-
-```sql
-WITH CurrentYearSales AS (
-    SELECT
-        YEAR(order_date)  AS YearOfSales,
-        SUM(sales_amount) AS SalesRevenue
-    FROM gold.fact_sales
-    WHERE order_date IS NOT NULL
-    GROUP BY YEAR(order_date)
-)
-SELECT
-    *,
-    LAG(SalesRevenue) OVER (ORDER BY YearOfSales)                  AS PrevYearSales,
-    SalesRevenue - LAG(SalesRevenue) OVER (ORDER BY YearOfSales)   AS DiffInSales
-FROM CurrentYearSales;
-```
-
-### Customer segments per year (NTILE + CASE)
-
-```sql
-WITH RevenueByCustomers AS (
-    SELECT
-        YEAR(order_date)  AS YearOfSale,
-        customer_key,
-        SUM(sales_amount) AS SalesThroughCustomers
-    FROM gold.fact_sales
-    WHERE order_date IS NOT NULL
-    GROUP BY YEAR(order_date), customer_key
-),
-CustomerSegments AS (
-    SELECT
-        *,
-        NTILE(3) OVER (PARTITION BY YearOfSale ORDER BY SalesThroughCustomers DESC) AS CustSegment
-    FROM RevenueByCustomers
-)
-SELECT
-    *,
-    CASE
-        WHEN CustSegment = 1 THEN 'Diamond'
-        WHEN CustSegment = 2 THEN 'Gold'
-        ELSE 'Silver'
-    END AS CustomerType
-FROM CustomerSegments
-ORDER BY YearOfSale;
-```
-
-### Top 25% products by revenue each year (CUME_DIST)
-
-```sql
-WITH RevenueByProducts AS (
-    SELECT
-        YEAR(s.order_date)  AS YearOfSale,
-        p.product_key,
-        p.product_name,
-        SUM(s.sales_amount) AS SalesByProduct
-    FROM gold.fact_sales AS s
-    INNER JOIN gold.dim_products AS p ON p.product_key = s.product_key
-    WHERE s.order_date IS NOT NULL
-    GROUP BY YEAR(s.order_date), p.product_key, p.product_name
-),
-ProdRank AS (
-    SELECT
-        *,
-        CUME_DIST() OVER (PARTITION BY YearOfSale ORDER BY SalesByProduct DESC) AS CumeDistPos
-    FROM RevenueByProducts
-)
-SELECT *
-FROM ProdRank
-WHERE CumeDistPos <= 0.25
-ORDER BY YearOfSale, SalesByProduct DESC;
-```
-
-`CUME_DIST()` is calculated separately for each year. A value of 0.25 or less means the product is in the top quarter by revenue for that year (top 25% by product count, not 25% of revenue).
-
----
 
 ## Key Insights
 
@@ -183,35 +110,23 @@ ORDER BY YearOfSale, SalesByProduct DESC;
 
 ---
 
-## Repository Structure
-
-```
-sql-sales-analytics/
-│
-├── README.md
-├── 01_change_over_year_analysis.sql
-├── 02_performance_analysis.sql
-└── screenshots/
-    └── query-output-samples.png
-```
-
----
 
 ## How to Run
 
 1. Install **SQL Server** and **SQL Server Management Studio (SSMS)**.
-2. Load the gold-layer tables `gold.fact_sales` and `gold.dim_products`.
-3. Open `01_change_over_year_analysis.sql` or `02_performance_analysis.sql` in SSMS.
-4. Run each query separately and review the output.
+2. Load the CSV files from the `dataset/` folder into the gold-layer tables `gold.fact_sales`, `gold.dim_products` and `gold.dim_customers`.
+3. Run the scripts available in DatabaseAndSchemaCreation to create Database and Schema
+4. Open `01_change_over_year_analysis.sql` or `02_performance_analysis.sql` in SSMS.
+5. Run each query separately and review the output.
 
 ---
 
 ## About Me
 
-Hi, I'm **Deepak**, an English language trainer moving into **data analytics**. I build hands-on SQL projects to turn data into clear, simple insights. I'm looking for a **Data Analyst** role where I can apply my communication skills to explain data stories and keep learning from a team.
+Hi, I'm **Deepak Singh**, an English language trainer moving into **Data Analytics**. I build hands-on SQL projects to turn data into clear, simple insights. I'm looking for a **Data Analyst** role where I can apply my communication skills to explain data stories and keep learning from a team.
 
-- LinkedIn: [your-link]
-- Email: [your-email]
+- Phone: +91-7607146249
+- Email: coachdeepaksingh@gmail.com
 
 ---
 
