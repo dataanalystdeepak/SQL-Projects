@@ -92,11 +92,9 @@ Rows with a NULL `order_date` are excluded from every analysis.
 
 ## Key Insights
 
-> Replace the placeholders with your real findings and numbers. Specific figures make the README far more convincing.
-
 **Change over year**
-- **Sales trend:** [e.g., Total sales grew from X in 20XX to Y in 20XX; the largest year-on-year jump was in 20XX.]
-- **Customer base:** [e.g., Unique customers increased from X to Y between 20XX and 20XX.]
+- **Sales trend:** [e.g., Total sales grew over years.]
+- **Customer base:** [e.g., Unique customers increased over years.]
 - **Seasonality:** [e.g., Running totals show most revenue arrives in months X to Y.]
 - **Trend smoothing:** [e.g., The 3-month moving average shows a dip around month X.]
 
